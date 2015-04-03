@@ -37,10 +37,12 @@ source("par_fun.R")
 
 reg <- makeRegistry(id="mrun_rand")
 ids <- batchMap(reg, fun=par_fun, 40193:40292, more.args=list(rand=T))
+
+# NOTE: This is the command that kicks off the batch jobs. You will need to wait until it is finished to load all of the results.
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
 # (not run) You may use this line to wait until the system has run all your
-# jobs before proceeding. Note that this may get stuck if a job fails for
+# jobs before proceeding. Note that this may get stuck if a job fails or times out for
 # a cluster-related reason.
 
 # while(showStatus(reg)$done < showStatus(reg)$n){Sys.sleep(5)}
@@ -68,10 +70,12 @@ xtable(final, digits=5)
 
 reg <- makeRegistry(id="mrun")
 ids <- batchMap(reg, fun=par_fun, 40193:40292)
+
+# NOTE: This is the command that kicks off the batch jobs. You will need to wait until it is finished to load all of the results.
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
 # (not run) You may use this line to wait until the system has run all your
-# jobs before proceeding. Note that this may get stuck if a job fails for
+# jobs before proceeding. Note that this may get stuck if a job fails or times out for
 # a cluster-related reason.
 
 # while(showStatus(reg)$done < showStatus(reg)$n){Sys.sleep(5)}

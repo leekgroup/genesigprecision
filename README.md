@@ -21,3 +21,4 @@ and submit SGE batch jobs via the BatchJobs R package.
 1. Install the required packages.
 2. Download all files in this github repository and keep them together in a local directory on your cluster.
 3. Run the code from genesigprecision_run.R.
+	* Please keep an eye for "submitJobs" commands in this file - these submit the batch jobs and are at the mercy of the cluster.
