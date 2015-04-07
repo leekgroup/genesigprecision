@@ -49,13 +49,14 @@ done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
 y <- loadResults(reg)
 
+outmat <- do.call(rbind, y)
 means <- matrix(colMeans(outmat), 5, 3, byrow=T)
 vars <- apply(outmat, 2, var)
 col <- rot <- vector("numeric", 5)
 for(i in 1:5){
 	idx <- i + 2*(i-1)
-	col[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-	rot[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
+	rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
+	col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
 }
 
 vars <- matrix(vars, 5, 3, byrow=T)
@@ -87,8 +88,8 @@ vars <- apply(outmat, 2, var)
 col <- rot <- vector("numeric", 5)
 for(i in 1:5){
 	idx <- i + 2*(i-1)
-	col[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-	rot[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
+	rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
+	col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
 }
 
 vars <- matrix(vars, 5, 3, byrow=T)
