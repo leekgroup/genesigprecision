@@ -372,67 +372,6 @@ Rotnitzky.old <- function(y,trt,piX,phiX,initEta=NULL,ctrl=list(epsilon=1e-7,max
        trt1$optim.conv,trt0$optim.conv)
 }
 
-# Rosenblum estimator
-
-# Write the code for the Rosenblum calcs
-Rosenblum.calcs <- function(y,trt,dX,piX,phiX,ss=1,famY,ctrl){
-  if(ss==1) trtnew=trt else trtnew=(1-trt)
-  delta <- ifelse(is.na(y),0,1)
-  if(sum(delta)==length(y)) h.wt <- rep(1,length(y))
-  if(sum(delta)<length(y)) {
-      hFIT <- try(glm(delta~as.matrix(cbind(trt,dX)),family=binomial,control=ctrl,na.action=na.omit),TRUE)
-      failed.h <- inherits(hFIT,"try-error")
-      if(failed.h) hFIT <- suppressWarnings(glm(delta~as.matrix(cbind(trt,dX)),family=binomial,control=ctrl,na.action=na.omit))
-      h.wt <- hFIT$fitted           
-  }
-  piFIT <- try(glm(trtnew~as.matrix(piX),family=binomial,control=ctrl,na.action=na.omit),TRUE)
-  failed.pi <- inherits(piFIT,"try-error")
-  if(failed.pi) piFIT <- suppressWarnings(glm(trtnew~as.matrix(piX)[,1:ncol(phiX)],family=binomial,control=ctrl,na.action=na.omit))
-  wt.alpha<-piFIT$fit
-  check.wt<-max(1/piFIT$fit[trt==ss & delta==1])
-  ave.wt<-mean(trtnew/piFIT$fit)
-  phiFIT <- try(glm(y~as.matrix(phiX),family=famY,weights=1/(h.wt*piFIT$fit),subset=(trt==ss & delta==1),control=ctrl,na.action=na.omit),TRUE) # Try adding a save for y, phiX, h.wt, trt/delta
-  failed.phi <- inherits(phiFIT,"try-error")
-  if(failed.phi) phiFIT <- suppressWarnings(glm(y~as.matrix(phiX),family=famY,weights=1/(h.wt*piFIT$fit),subset=(trt==ss & delta==1),control=ctrl,na.action=na.omit))
-  Q0 <- predict(phiFIT,as.data.frame(phiX),type="response")
-  mu.hat <- mean(Q0)
-  list(wt.alpha=wt.alpha,Q0=Q0,mu.hat=mu.hat,check.wt=check.wt,ave.wt=ave.wt,failed.pi=failed.pi,failed.phi=failed.phi,h.wt=h.wt)
-}
-
-
-
-Rosenblum <- function(y,trt,dX,piX,phiX,ctrl=list(epsilon=1e-7,maxit=50)) {
-  if( !all (trt %in% c(0,1) ) ) stop( "'TRT' should be binary." )
-  YisBin <- all(y[!is.na(y)] %in% c(0,1))
-  famY <- ifelse(YisBin,"binomial","gaussian")
-  # Get the Joffe estimators and save Pr(A=1/0|W) and Pr(Y=1|A,W)
-  joffe1 <- Rosenblum.calcs(y,trt,dX,piX,phiX,ss=1,famY,ctrl)
-  joffe0 <- Rosenblum.calcs(y,trt,dX,piX,phiX,ss=0,famY,ctrl)
-  # Create the new augmenting variables for the missingness model
-  newd1 <- trt/(joffe1$h.wt*joffe1$wt.alpha)*(joffe1$Q0 - joffe1$mu.hat)
-  newd0 <- (1-trt)/(joffe0$h.wt*joffe0$wt.alpha)*(joffe0$Q0 - joffe0$mu.hat)
-  dXnew <- cbind(dX,newd1,newd0)
-  # Create the new predictor for the propensity score model
-  newX1 <- 1/joffe1$wt.alpha*(joffe1$Q0 - joffe1$mu.hat)
-  newX0 <- 1/joffe0$wt.alpha*(joffe0$Q0 - joffe0$mu.hat)
-  piXnew <- cbind(piX,newX1,newX0)
-  # Get the updated estimate using piX and newX1
-  # in the propensity score model
-  trt1 <- Rosenblum.calcs(y,trt,dXnew,piXnew,phiX,ss=1,famY,ctrl)
-  trt0 <- Rosenblum.calcs(y,trt,dXnew,piXnew,phiX,ss=0,famY,ctrl)
-  mu.bar.1 <- trt1$mu.hat
-  mu.bar.0 <- trt0$mu.hat
-  max.wt.1 <- trt1$check.wt
-  max.wt.0 <- trt0$check.wt
-  ave.wt.1 <- trt1$ave.wt
-  ave.wt.0 <- trt0$ave.wt
-  failed.piDR.1 <- trt1$failed.pi
-  failed.phiDR.1 <- trt1$failed.phi
-  failed.piDR.0 <- trt0$failed.pi
-  failed.phiDR.0 <- trt0$failed.phi
-  list(mu.bar.1,mu.bar.0,joffe1$failed.pi,joffe1$failed.phi,joffe0$failed.pi,joffe0$failed.phi,max.wt.1,max.wt.0,ave.wt.1,ave.wt.0,failed.piDR.1,failed.phiDR.1,failed.piDR.0,failed.phiDR.0)
-}
-
 ## Gruber estimator
 
 bound <- function(x,bounds) {
@@ -544,6 +483,72 @@ TAN <- function(y,trt,piX,phiX,ctrl=list(epsilon=1e-8,maxit=50)) {
   list(mu.hat.1=mu.hat.1,mu.hat.0=mu.hat.0,v.diff=v.diff,conv1=conv1,conv0=conv0,failed.pi=failed.pi,failed.phi1=failed.phi1,failed.phi0=failed.phi0)
 }
 
+# PLEASE.calcs computes the estimated mean for a given treatment group
+# This function takes the outcome (y), treatment indicator (trt),
+# matrix of covariates defining the missing data model (dX),
+# matrix of baseline variables defining the propensity score model (piX),
+# matrix of baseline variables defining the outcome regression model (phiX),
+# treatment group value (ss), and distribution of Y
+PLEASE.calcs <- function(y,trt,dX,piX,phiX,ss=1,famY,ctrl){
+  if(ss==1) trtnew=trt else trtnew=(1-trt)
+  delta <- ifelse(is.na(y),0,1)
+  if(sum(delta)==length(y)) h.wt <- rep(1,length(y))
+  if(sum(delta)<length(y)) {
+      hFIT <- try(glm(delta~as.matrix(cbind(trt,dX)),family=binomial,control=ctrl,na.action=na.omit),TRUE)
+      failed.h <- inherits(hFIT,"try-error")
+      if(failed.h) hFIT <- suppressWarnings(glm(delta~as.matrix(cbind(trt,dX)),family=binomial,control=ctrl,na.action=na.omit))
+      h.wt <- hFIT$fitted           
+  }
+  piFIT <- try(glm(trtnew~as.matrix(piX),family=binomial,control=ctrl,na.action=na.omit),TRUE)
+  failed.pi <- inherits(piFIT,"try-error")
+  if(failed.pi) piFIT <- suppressWarnings(glm(trtnew~as.matrix(piX)[,1:ncol(phiX)],family=binomial,control=ctrl,na.action=na.omit))
+  wt.alpha<-piFIT$fit
+  check.wt<-max(1/piFIT$fit[trt==ss & delta==1])
+  ave.wt<-mean(trtnew/piFIT$fit)
+  phiFIT <- try(glm(y~as.matrix(phiX),family=famY,weights=1/(h.wt*piFIT$fit),subset=(trt==ss & delta==1),control=ctrl,na.action=na.omit),TRUE)
+  failed.phi <- inherits(phiFIT,"try-error")
+  if(failed.phi) phiFIT <- suppressWarnings(glm(y~as.matrix(phiX),family=famY,weights=1/(h.wt*piFIT$fit),subset=(trt==ss & delta==1),control=ctrl,na.action=na.omit))
+  Q0 <- predict(phiFIT,as.data.frame(phiX),type="response")
+  mu.hat <- mean(Q0)
+  list(wt.alpha=wt.alpha,Q0=Q0,mu.hat=mu.hat,check.wt=check.wt,ave.wt=ave.wt,failed.pi=failed.pi,failed.phi=failed.phi,h.wt=h.wt)
+}
+
+
+# PLEASE takes the outcome (y), treatment indicator (trt), 
+# baseline covariates that form the missing data model (dX),
+# the propensity score model (piX), and the outcome regression
+# model (phiX)
+PLEASE <- function(y,trt,dX,piX,phiX,ctrl=list(epsilon=1e-7,maxit=50)) {
+  if( !all (trt %in% c(0,1) ) ) stop( "'TRT' should be binary." )
+  YisBin <- all(y[!is.na(y)] %in% c(0,1))
+  famY <- ifelse(YisBin,"binomial","gaussian")
+  # Get the Joffe estimators and save Pr(A=1/0|W) and Pr(Y=1|A,W)
+  drwls1 <- PLEASE.calcs(y,trt,dX,piX,phiX,ss=1,famY,ctrl)
+  drwls0 <- PLEASE.calcs(y,trt,dX,piX,phiX,ss=0,famY,ctrl)
+  # Create the new augmenting variables for the missingness model
+  newd1 <- trt/(drwls1$h.wt)*(drwls1$Q0 - drwls1$mu.hat)
+  newd0 <- (1-trt)/(drwls0$h.wt)*(drwls0$Q0 - drwls0$mu.hat)
+  dXnew <- cbind(dX,newd1,newd0)
+  # Create the new predictor for the propensity score model
+  newX1 <- drwls1$Q0 - drwls1$mu.hat
+  newX0 <- drwls0$Q0 - drwls0$mu.hat
+  piXnew <- cbind(piX,newX1,newX0)
+  # Get the updated estimate using piX and newX1
+  # in the propensity score model
+  trt1 <- PLEASE.calcs(y,trt,dXnew,piXnew,phiX,ss=1,famY,ctrl)
+  trt0 <- PLEASE.calcs(y,trt,dXnew,piXnew,phiX,ss=0,famY,ctrl)
+  mu.bar.1 <- trt1$mu.hat
+  mu.bar.0 <- trt0$mu.hat
+  max.wt.1 <- trt1$check.wt
+  max.wt.0 <- trt0$check.wt
+  ave.wt.1 <- trt1$ave.wt
+  ave.wt.0 <- trt0$ave.wt
+  failed.piDR.1 <- trt1$failed.pi
+  failed.phiDR.1 <- trt1$failed.phi
+  failed.piDR.0 <- trt0$failed.pi
+  failed.phiDR.0 <- trt0$failed.phi
+  list(mu.bar.1,mu.bar.0,drwls1$failed.pi,drwls1$failed.phi,drwls0$failed.pi,drwls0$failed.phi,max.wt.1,max.wt.0,ave.wt.1,ave.wt.0,failed.piDR.1,failed.phiDR.1,failed.piDR.0,failed.phiDR.0)
+}
 
 upper.fun <- function(x,data,xs) {
   apply(x,2,my.sim,data,xs)
@@ -675,7 +680,7 @@ run_analysis <- function(data, xs){
 
 	una <- unadjusted(y,trt)
         # Call the Rosenblum estimator
-        adj2 <- tryCatch(Rosenblum(y,trt,as.matrix(piX),as.matrix(phiX),dX=as.matrix(piX)), error=function(e) e)
+        adj2 <- tryCatch(PLEASE(y,trt,as.matrix(piX),as.matrix(phiX),dX=as.matrix(piX)), error=function(e) e)
         # Call the Rotnitzky estimoator
         adj <- tryCatch(Rotnitzky(y,trt,as.matrix(piX),as.matrix(phiX)), error=function(e) e)
 
