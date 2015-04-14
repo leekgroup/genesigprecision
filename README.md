@@ -3,7 +3,7 @@ R Code for reproducing analysis for "Measuring the contribution of genomic predi
 
 ### R packages
 Required packages:
-BatchJobs, rpart, rattle, xtable 
+BatchJobs, xtable 
 
 ### File Description
 * functions.R contains the code necessary for estimator adjustment, as describe in the "Methods" section of the paper.

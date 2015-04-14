@@ -7,119 +7,65 @@
 #' Please ensure that this code is run from the same directory that
 #' contains the accompanying files available on github.
 
-# Load necessary libraries/data
+# Load necessary libraries
+
 library(rpart)
-library(rattle)
 library(BatchJobs)
 library(xtable)
 load("genesigprecision_data.Rda")
-set.seed(42341)
-
-# First, we generate an example decision tree- Figure 1 in the paper
-sampfun <- function(pd){ pd[sample(nrow(pd), replace=TRUE),]}
-pdtmp <- sampfun(pd) # We sample the data as per the scheme selected
-mod_clin_no_er <- rpart(y~Characteristics.Age + Characteristics.TumorSize + g2ind + g3ind, data=pdtmp)
-mod_clin_no_er <- prune(mod_clin_no_er, cp=mod_clin_no_er$cptable[which.min(mod_clin_no_er$cptable[,"xerror"]),"CP"])
-drawTreeNodes(mod_clin_no_er)
-
-# Next, we provide code to run the two simulations described- the complete label
-# permutation (Table 2) and the resampling simulation (Table 3). We also 
-# generate sample size calculations for Table 4.
-
-# Note: Cluster behavior can be unpredictable and thus all desired jobs
-# may not finish on a particular run. Due to the use of the same list of 
-# random seeds, if all jobs finish then the table results will match those
-# presented in the paper.
 
 source("par_fun.R")
 
-# This section will produce the permuted sampling results
-
-reg <- makeRegistry(id="mrun_rand")
-ids <- batchMap(reg, fun=par_fun, 40193:40292, more.args=list(rand=T))
-
-# NOTE: This is the command that kicks off the batch jobs. You will need to wait until it is finished to load all of the results.
+reg <- makeRegistry(id="full",seed=10284)
+ids <- batchMap(reg, par_fun, 10289:10388)
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-# (not run) You may use this line to wait until the system has run all your
-# jobs before proceeding. Note that this may get stuck if a job fails or times out for
-# a cluster-related reason.
+waitForJobs(reg) # This will wait until all jobs return with results and
+		     # provides a progress bar
 
-# while(showStatus(reg)$done < showStatus(reg)$n){Sys.sleep(5)}
-
-y <- loadResults(reg)
+y <- loadResults(reg) # Aggregate results
 
 outmat <- do.call(rbind, y)
-means <- matrix(colMeans(outmat), 5, 3, byrow=T)
+means <- matrix(colMeans(outmat), 4, 3, byrow=T)
 vars <- apply(outmat, 2, var)
-col <- rot <- vector("numeric", 5)
-for(i in 1:5){
+
+col <- rot <- vector("numeric", 4) # These are the col and rot approximations
+for(i in 1:4){
 	idx <- i + 2*(i-1)
 	rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
 	col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
 }
 
-vars <- matrix(vars, 5, 3, byrow=T)
+vars <- matrix(vars, 4, 3, byrow=T)
 
 final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-colnames(final) <- c("mu_una", "s_una", "mu_rot", "s_rot", "mu_col", "s_col", "g_rot", "g_col")
-rownames(final) <- c("no_age", "age", "gen", "c_g", "cg")
 
-xtable(final, digits=5)
+xtable(final)
 
-# This section will produce the resampling simulation results
+# Generate histogram figure of variability of gain approximations
 
-reg <- makeRegistry(id="mrun")
-ids <- batchMap(reg, fun=par_fun, 40193:40292)
-
-# NOTE: This is the command that kicks off the batch jobs. You will need to wait until it is finished to load all of the results.
-done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
-
-# (not run) You may use this line to wait until the system has run all your
-# jobs before proceeding. Note that this may get stuck if a job fails or times out for
-# a cluster-related reason.
-
-# while(showStatus(reg)$done < showStatus(reg)$n){Sys.sleep(5)}
-
-y <- loadResults(reg)
-outmat <- do.call(rbind, y)
-means <- matrix(colMeans(outmat), 5, 3, byrow=T)
-vars <- apply(outmat, 2, var)
-col <- rot <- vector("numeric", 5)
-for(i in 1:5){
-	idx <- i + 2*(i-1)
-	rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-	col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
+clin_out <- cpg_out <- vector("numeric", 100)
+for(i in 1:100){
+	submat <- outmat[-sample(1:nrow(outmat), nrow(outmat)/4, replace=F),]
+	tmp <- apply(submat, 2, var)
+	clin_out[i] <- (tmp[4] - tmp[6])/tmp[4]
+	cpg_out[i] <- (tmp[10] - tmp[12])/tmp[12]	
 }
 
-vars <- matrix(vars, 5, 3, byrow=T)
+par(mfrow=c(1,2))
+hist(clin_out*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors")
+hist(cpg_out*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors")
 
-final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-colnames(final) <- c("mu_una", "s_una", "mu_rot", "s_rot", "mu_col", "s_col", "g_rot", "g_col")
-rownames(final) <- c("no_age", "age", "gen", "c_g", "cg")
+# Here, we'll do the permuted example to show no gain when Y and W are uncorrelated.
 
-xtable(final, digits=5)
-
-1 - 1/(1+rot)
-1 - 1/(1+col)
-
-# This section will produce the resampling simulation results without decision-tree modeling of the covariates (for comparison)
-
-source("par_fun_nomod.R")
-
-reg <- makeRegistry(id="mrun_nomod")
-ids <- batchMap(reg, fun=par_fun_nomod, 40193:40292)
-
-# NOTE: This is the command that kicks off the batch jobs. You will need to wait until it is finished to load all of the results.
+reg <- makeRegistry(id="full_permute",seed=10284)
+ids <- batchMap(reg, par_fun, 31389:31488, more.args=list(rand=T))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-# (not run) You may use this line to wait until the system has run all your
-# jobs before proceeding. Note that this may get stuck if a job fails or times out for
-# a cluster-related reason.
-
-# while(showStatus(reg)$done < showStatus(reg)$n){Sys.sleep(5)}
+waitForJobs(reg)
 
 y <- loadResults(reg)
+
 outmat <- do.call(rbind, y)
 means <- matrix(colMeans(outmat), 4, 3, byrow=T)
 vars <- apply(outmat, 2, var)
@@ -133,7 +79,3 @@ for(i in 1:4){
 vars <- matrix(vars, 4, 3, byrow=T)
 
 final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-colnames(final) <- c("mu_una", "s_una", "mu_rot", "s_rot", "mu_col", "s_col", "g_rot", "g_col")
-rownames(final) <- c("no_age", "age", "gen", "cg")
-
-xtable(final, digits=5)
