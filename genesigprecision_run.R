@@ -6,6 +6,11 @@
 #'
 #' Please ensure that this code is run from the same directory that
 #' contains the accompanying files available on github.
+#'
+#' Please also run this code carefully. There are commands to kick off
+#' jobs in an SGE cluster environment. We've put in comments where these
+#' occur, but please be mindful of any "submitJobs" commands.
+#'
 
 # Load necessary libraries
 
@@ -16,6 +21,7 @@ load("genesigprecision_data.Rda")
 
 source("par_fun.R")
 
+# This block will kick off 100 jobs on your cluster
 reg <- makeRegistry(id="full",seed=10284)
 ids <- batchMap(reg, par_fun, 10289:10388)
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
@@ -44,20 +50,36 @@ xtable(final)
 
 # Generate histogram figure of variability of gain approximations
 
-clin_out <- cpg_out <- vector("numeric", 100)
-for(i in 1:100){
-	submat <- outmat[-sample(1:nrow(outmat), nrow(outmat)/4, replace=F),]
-	tmp <- apply(submat, 2, var)
-	clin_out[i] <- (tmp[4] - tmp[6])/tmp[4]
-	cpg_out[i] <- (tmp[10] - tmp[12])/tmp[12]	
-}
+source("par_fun_internal.R")
+
+id <- letters[1:10]
+seed <- seq(31389, 31389 + 102*9, 102)
+input <- data.frame("id"=id,"seed"=seed, stringsAsFactors=F)
+input <- lapply(1:10, function(x) input[x,])
+
+# NOTE: This is going to kick off 10 sets of 100 jobs each (1000 jobs).
+# This may take a while or you may run into job limits. Please be
+# careful about executing this code!
+
+reg <- makeRegistry(id="full_resample",seed=10284)
+ids <- batchMap(reg, par_fun_internal, input)
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg)
+
+y <- loadResults(reg)
+vars <- lapply(y, function(x){apply(x,2,var)})
+g_clin <- lapply(vars, function(x){(x[4]-x[6])/x[4]})
+g_cpg <- lapply(vars, function(x){(x[10]-x[12])/x[10]})
 
 par(mfrow=c(1,2), mar = c(5,4.5,4,2))
-hist(clin_out*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
-hist(cpg_out*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
+hist(unlist(g_clin)*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
+hist(unlist(g_cpg)*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
+
 
 # Here, we'll do the permuted example to show no gain when Y and W are uncorrelated.
 
+# This will kick off 100 jobs on your cluster.
 reg <- makeRegistry(id="full_permute",seed=10284)
 ids <- batchMap(reg, par_fun, 31389:31488, more.args=list(rand=T))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
@@ -79,3 +101,5 @@ for(i in 1:4){
 vars <- matrix(vars, 4, 3, byrow=T)
 
 final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
+
+xtable(final, digits=5)

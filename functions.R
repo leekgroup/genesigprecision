@@ -1,14 +1,11 @@
-## 3) write functions to calculate the unadjusted, joffe, rotnitzky and US estimators
-##
-## I will use the same naming convention as the Rotnitzky paper and code
-##
-## y         the outcome variable
-## trt       the treatment indicator
-## piX       propensity score model covariates for treatment indicator
-## phiX      outcome model covariates
-## initEta   initial value of estimator (joffe)
-## ctrl      list of control parameters, ignore this for now!
-##
+#'
+#' Code for computing covariate-adjusted treatment effect estimators
+#'
+#' Provided by Elizabeth Colantuoni
+#'
+#' The key functions in this file are "unadjusted", "PLEASE", "Rotnitzky", "run_analysis"
+#' There are many convenience/helper functions, unused test functions, and other related functions included as well.
+
 
 # Write the unadjusted estimator 
 unadjusted <- function(y,trt) {
@@ -679,7 +676,7 @@ run_analysis <- function(data, xs){
         phiX <- as.matrix(data[,xs])
 
 	una <- unadjusted(y,trt)
-        # Call the Rosenblum estimator
+        # Call the Colantuoni estimator
         adj2 <- tryCatch(PLEASE(y,trt,as.matrix(piX),as.matrix(phiX),dX=as.matrix(piX)), error=function(e) e)
         # Call the Rotnitzky estimoator
         adj <- tryCatch(Rotnitzky(y,trt,as.matrix(piX),as.matrix(phiX)), error=function(e) e)
