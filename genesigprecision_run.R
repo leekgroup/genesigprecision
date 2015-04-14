@@ -52,9 +52,9 @@ for(i in 1:100){
 	cpg_out[i] <- (tmp[10] - tmp[12])/tmp[12]	
 }
 
-par(mfrow=c(1,2))
-hist(clin_out*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors")
-hist(cpg_out*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors")
+par(mfrow=c(1,2), mar = c(5,4.5,4,2))
+hist(clin_out*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
+hist(cpg_out*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
 
 # Here, we'll do the permuted example to show no gain when Y and W are uncorrelated.
 
