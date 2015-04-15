@@ -33,8 +33,6 @@ par_fun <- function(seed,rand=F){
 
                 pdtmp <- sampfun(pd) # We sample the data as per the scheme selected
 
-                pdtmp <- pdtmp[sample(1:nrow(pdtmp),nrow(pdtmp)/2,replace=T),] #Take a random 50% subset
-
                 pdtmp$trt <- rbinom(nrow(pdtmp), 1, 0.5) # Exogenous treatment assignment
 
 out_clin_no_er <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "g2ind", "g3ind")), error=function(e) e)
