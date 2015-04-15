@@ -16,6 +16,7 @@ BatchJobs, xtable, genefu
 
 * supplement_run.R contains code used to generate the results for three external datasets provided in the supplement to this paper. These serve as further validation for the results in the main text.
 * genesig_supplement_data.Rda contains the three GEO datasets used in the supplement.
+* supplement.pdf is a PDF version of the supplementary material
 
 ### Instructions
 
