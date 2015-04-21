@@ -10,6 +10,8 @@ BatchJobs, xtable, genefu
 * genesigprecision_data.Rda contains the 296-patient dataset referred to in the paper.
 * par_fun.R contains the parallelized simulation function that computes the adjusted estimators 100 times. This is run 100 times each via BatchJobs to attain 10,000 total simulations.
 * par_fun_internal.R contains a simulation approach to running 10 subsamplings of the data and resampling 10,000 times from each subsample. This is done to get a sense of the variability of our gain estimates.
+* par_fun_double.R is the same as par_fun.R except we double the sample size when we resample with replacment and permute covariates to remove correlation
+* par_fun_double.R is the same as par_fun.R except we use fewer clinical adjustment covariates
 * internal_looper_nomod.R is a helper function to conduct the 10x10,000 simulation.
 * genesigprecision_run.R contains code to run the analysis and reproduce the results in the paper.
 * .BatchJobs.R and simple.tmpl are configuration files necessary for running the parallelized job on a cluster.

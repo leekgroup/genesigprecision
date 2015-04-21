@@ -12,14 +12,36 @@
 #' occur, but please be mindful of any "submitJobs" commands.
 #'
 
-# Load necessary libraries
-
+# Load necessary libraries and data
 library(rpart)
 library(BatchJobs)
 library(xtable)
 load("genesigprecision_data.Rda")
 
+# Load a series of parallelized functions for different aspects of the simulation
 source("par_fun.R")
+source("par_fun_internal.R")
+source("par_fun_double.R")
+source("par_fun_fewer.R")
+
+# Convenience function to output results from a registry
+make_table <- function(y){
+	outmat <- do.call(rbind, y)
+	means <- matrix(colMeans(outmat), 4, 3, byrow=T)
+	vars <- apply(outmat, 2, var)
+	col <- rot <- vector("numeric", 4)
+	for(i in 1:4){
+		idx <- i + 2*(i-1)
+		rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
+		col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
+	}
+
+	vars <- matrix(vars, 4, 3, byrow=T)
+
+	final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
+
+	xtable(final, digits=5)
+}
 
 # This block will kick off 100 jobs on your cluster
 reg <- makeRegistry(id="full",seed=10284)
@@ -31,26 +53,9 @@ waitForJobs(reg) # This will wait until all jobs return with results and
 
 y <- loadResults(reg) # Aggregate results
 
-outmat <- do.call(rbind, y)
-means <- matrix(colMeans(outmat), 4, 3, byrow=T)
-vars <- apply(outmat, 2, var)
-
-col <- rot <- vector("numeric", 4) # These are the col and rot approximations
-for(i in 1:4){
-	idx <- i + 2*(i-1)
-	rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-	col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
-}
-
-vars <- matrix(vars, 4, 3, byrow=T)
-
-final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-
-xtable(final)
+make_table(y)
 
 # Generate histogram figure of variability of gain approximations
-
-source("par_fun_internal.R")
 
 id <- letters[1:10]
 seed <- seq(31389, 31389 + 102*9, 102)
@@ -76,7 +81,6 @@ par(mfrow=c(1,2), mar = c(5,4.5,4,2))
 hist(unlist(g_clin)*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
 hist(unlist(g_cpg)*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
 
-
 # Here, we'll do the permuted example to show no gain when Y and W are uncorrelated.
 
 # This will kick off 100 jobs on your cluster.
@@ -88,18 +92,28 @@ waitForJobs(reg)
 
 y <- loadResults(reg)
 
-outmat <- do.call(rbind, y)
-means <- matrix(colMeans(outmat), 4, 3, byrow=T)
-vars <- apply(outmat, 2, var)
-col <- rot <- vector("numeric", 4)
-for(i in 1:4){
-	idx <- i + 2*(i-1)
-	rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-	col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
-}
+make_table(y)
 
-vars <- matrix(vars, 4, 3, byrow=T)
+# We extend the permuted example concept to examine what happens when we double the sample size
 
-final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
+reg <- makeRegistry(id="full_permute_double",seed=10284)
+ids <- batchMap(reg, par_fun_double, 31389:31488, more.args=list(rand=T))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-xtable(final, digits=5)
+waitForJobs(reg)
+
+y <- loadResults(reg)
+
+make_table(y)
+
+# We extend the permuted example concept to examine what happens when we use fewer covariates
+
+reg <- makeRegistry(id="full_permute_fewer",seed=10284)
+ids <- batchMap(reg, par_fun_fewer, 31389:31488, more.args=list(rand=T))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg)
+
+y <- loadResults(reg)
+
+make_table(y)
