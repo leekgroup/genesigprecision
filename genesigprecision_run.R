@@ -55,7 +55,7 @@ y <- loadResults(reg) # Aggregate results
 
 make_table(y)
 
-# Generate histogram figure of variability of gain approximations
+# Generate histogram figure of variability of gain approximations (moved to supplement)
 
 id <- letters[1:10]
 seed <- seq(31389, 31389 + 102*9, 102)
