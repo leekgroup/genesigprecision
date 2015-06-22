@@ -3,74 +3,63 @@
 #'
 
 # load necessary libraries and dataset
-load("genesig_supplement_data.Rda")
+load("genesigprecision_data.Rda")
 library(Biobase)
 library(BatchJobs)
 library(xtable)
 library(genefu)
-source("par_fun_eset.R")
+source("par_fun.R")
+source("par_fun_internal.R")
+source("par_fun_double.R")
+source("par_fun_fewer.R")
+source("make_table.R")
 
-# This function runs the same simulation routine for a given dataset
-run_eset_sim <- function(dat, id){
+# We extend the permuted example concept to examine what happens when we double the sample size
 
-	# Need annotation to make MammaPrint predictions via genefu package
-	colnames(fData(dat)) <- c("EntrezGene.ID", "Symbol")
-	pd <- pData(dat)
-	pd$mammaprint <- gene70(t(exprs(dat)), fData(dat), do.mapping=T)$risk
-	# Indicators for grade
-	pd$g2ind <- ifelse(pd$grade == 2, 1, 0)
-	pd$g3ind <- ifelse(pd$grade == 3, 1, 0)
-	pd$y <- pd$surv5
+reg <- makeRegistry(id="full_permute_double",seed=10284)
+ids <- batchMap(reg, par_fun_double, 31389:31488, more.args=list(rand=T))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-	# Parallelized run of 10,000 simulations
-	reg <- makeRegistry(id=id,seed=10284)
-	ids <- batchMap(reg, par_fun_eset, 10734:10833, more.args=list(pd=pd))
-	done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+waitForJobs(reg)
 
-	# To not step on the registry's toes while it's initializing
-      Sys.sleep(5)
+y <- loadResults(reg)
 
-	# Wait until jobs are done
-      jobs_done <- FALSE
-      while(!jobs_done){
-		jobs_done <- waitForJobs(reg,progressbar=FALSE)
-      }
+make_table(y)
 
-	y <- loadResults(reg)
+# We extend the permuted example concept to examine what happens when we use fewer covariates
 
-	outmat <- do.call(rbind, y)
-	means <- matrix(colMeans(outmat), 4, 3, byrow=T)
-	vars <- apply(outmat, 2, var)
-	col <- rot <- vector("numeric", 4)
-	for(i in 1:4){
-		idx <- i + 2*(i-1)
-		rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-		col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
-	}
+reg <- makeRegistry(id="full_permute_fewer",seed=10284)
+ids <- batchMap(reg, par_fun_fewer, 31389:31488, more.args=list(rand=T))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-	vars <- matrix(vars, 4, 3, byrow=T)
+waitForJobs(reg)
 
-	cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-}
+y <- loadResults(reg)
 
-dat <- GSE19615
+make_table(y)
 
-final_eset_19615 <- run_eset_sim(dat, "eset_19615")
+# Generate histogram figure of variability of gain approximations (moved to supplement)
 
-dat <- GSE11121
+id <- letters[1:10]
+seed <- seq(31389, 31389 + 102*9, 102)
+input <- data.frame("id"=id,"seed"=seed, stringsAsFactors=F)
+input <- lapply(1:10, function(x) input[x,])
 
-final_eset_11121 <- run_eset_sim(dat, "eset_11121")
+# NOTE: This is going to kick off 10 sets of 100 jobs each (1000 jobs).
+# This may take a while or you may run into job limits. Please be
+# careful about executing this code!
 
-dat <- GSE7390
-# Need to drop 2 patients missing grade
-dat <- dat[,-which(is.na(pData(dat)$grade))]
+reg <- makeRegistry(id="full_resample",seed=10284)
+ids <- batchMap(reg, par_fun_internal, input)
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-final_eset_7390 <- run_eset_sim(dat, "eset_7390")
+waitForJobs(reg)
 
-xtable(final_eset_19615, digits=5)
-xtable(final_eset_11121, digits=5)
-xtable(final_eset_7390, digits=5)
+y <- loadResults(reg)
+vars <- lapply(y, function(x){apply(x,2,var)})
+g_clin <- lapply(vars, function(x){(x[4]-x[6])/x[4]})
+g_cpg <- lapply(vars, function(x){(x[10]-x[12])/x[10]})
 
-
-
-
+par(mfrow=c(1,2), mar = c(5,4.5,4,2))
+hist(unlist(g_clin)*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
+hist(unlist(g_cpg)*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)

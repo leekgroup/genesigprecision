@@ -26,16 +26,16 @@ par_fun <- function(seed,rand=F){
         source("functions.R")
         load("genesigprecision_data.Rda")
 
-        result <- matrix(NA,100,12)
+        result <- matrix(NA,1000,12)
         i <- 1
 
-        while(i <= 100){
+        while(i <= 1000){
 
                 pdtmp <- sampfun(pd) # We sample the data as per the scheme selected
 
                 pdtmp$trt <- rbinom(nrow(pdtmp), 1, 0.5) # Exogenous treatment assignment
 
-out_clin_no_er <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "g2ind", "g3ind")), error=function(e) e)
+				out_clin_no_er <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "g2ind", "g3ind")), error=function(e) e)
                 out_clin_er <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "Factor.Value.ER.status", "g2ind", "g3ind")), error=function(e) e)
                 out_gen <- tryCatch(run_analysis(pdtmp, c("Factor.Value.MammaPrint.prediction")), error=function(e) e)
                 out_cg <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "Factor.Value.ER.status", "g2ind", "g3ind", "Factor.Value.MammaPrint.prediction")), error=function(e) e)

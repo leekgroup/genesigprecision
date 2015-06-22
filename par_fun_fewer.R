@@ -28,10 +28,10 @@ par_fun_fewer <- function(seed,rand=F){
 	source("functions.R")
 	load("genesigprecision_data.Rda")
 
-	result <- matrix(NA,100,12)
+	result <- matrix(NA,1000,12)
         i <- 1
 
-        while(i <= 100){
+        while(i <= 1000){
 
                 pdtmp <- sampfun(pd) # We sample the data as per the scheme selected
 

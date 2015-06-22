@@ -13,35 +13,17 @@
 #'
 
 # Load necessary libraries and data
-library(rpart)
+library(Biobase)
 library(BatchJobs)
 library(xtable)
+library(genefu)
+library(rpart)
 load("genesigprecision_data.Rda")
 
 # Load a series of parallelized functions for different aspects of the simulation
 source("par_fun.R")
-source("par_fun_internal.R")
-source("par_fun_double.R")
-source("par_fun_fewer.R")
-
-# Convenience function to output results from a registry
-make_table <- function(y){
-	outmat <- do.call(rbind, y)
-	means <- matrix(colMeans(outmat), 4, 3, byrow=T)
-	vars <- apply(outmat, 2, var)
-	col <- rot <- vector("numeric", 4)
-	for(i in 1:4){
-		idx <- i + 2*(i-1)
-		rot[i] <- (vars[idx] - vars[idx + 1])/vars[idx]
-		col[i] <- (vars[idx] - vars[idx + 2])/vars[idx]
-	}
-
-	vars <- matrix(vars, 4, 3, byrow=T)
-
-	final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-
-	xtable(final, digits=5)
-}
+source("par_fun_eset.R")
+source("make_table.R")
 
 # This block will kick off 100 jobs on your cluster
 reg <- makeRegistry(id="full",seed=10284)
@@ -55,61 +37,71 @@ y <- loadResults(reg) # Aggregate results
 
 make_table(y)
 
-# Generate histogram figure of variability of gain approximations (moved to supplement)
+# This function prepares data for simulation run
+# It relabels the relevant data columns and makes MammaPrint predictions using the genefu package
+prep_eset_sim <- function(dat){
+	# Need annotation to make MammaPrint predictions via genefu package
+	colnames(fData(dat)) <- c("EntrezGene.ID", "Symbol")
+	pd <- pData(dat)
+	pd$mammaprint <- gene70(t(exprs(dat)), fData(dat), do.mapping=T)$risk
+	# Indicators for grade
+	pd$g2ind <- ifelse(pd$grade == 2, 1, 0)
+	pd$g3ind <- ifelse(pd$grade == 3, 1, 0)
+	pd$y <- pd$surv5
+	pd
+}
 
-id <- letters[1:10]
-seed <- seq(31389, 31389 + 102*9, 102)
-input <- data.frame("id"=id,"seed"=seed, stringsAsFactors=F)
-input <- lapply(1:10, function(x) input[x,])
+# Dataset GSE19615
+dat_19615 <- prep_eset_sim(GSE19615)
 
-# NOTE: This is going to kick off 10 sets of 100 jobs each (1000 jobs).
-# This may take a while or you may run into job limits. Please be
-# careful about executing this code!
-
-reg <- makeRegistry(id="full_resample",seed=10284)
-ids <- batchMap(reg, par_fun_internal, input)
+# This block will kick off 100 jobs on your cluster
+reg <- makeRegistry(id="GSE19615",seed=10284)
+ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_19615))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
-waitForJobs(reg)
+waitForJobs(reg) # This will wait until all jobs return with results and
+		     # provides a progress bar
 
-y <- loadResults(reg)
-vars <- lapply(y, function(x){apply(x,2,var)})
-g_clin <- lapply(vars, function(x){(x[4]-x[6])/x[4]})
-g_cpg <- lapply(vars, function(x){(x[10]-x[12])/x[10]})
+y <- loadResults(reg) # Aggregate results
 
-par(mfrow=c(1,2), mar = c(5,4.5,4,2))
-hist(unlist(g_clin)*100, main="Distribution of Percent Gain, Clinical Only", xlab="% Gain Due to Clinical Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
-hist(unlist(g_cpg)*100, main="Distribution of Percent Gain, Clinical + Genomic", xlab="% Gain Due to Clinical + Genomic Factors",cex.lab=1.5, cex.axis=1.5, cex.main=1.5)
+make_table(y)
+
+# Dataset GSE11121
+dat_11121 <- prep_eset_sim(GSE11121)
+
+# This block will kick off 100 jobs on your cluster
+reg <- makeRegistry(id="GSE11121",seed=10284)
+ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_11121))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg) # This will wait until all jobs return with results and
+		     # provides a progress bar
+
+y <- loadResults(reg) # Aggregate results
+
+make_table(y)
+
+# Dataset GSE7390
+dat_7390 <- prep_eset_sim(GSE7390)
+dat_7390 <- dat_7390[,-which(is.na(pData(dat_7390)$grade))]
+
+# This block will kick off 100 jobs on your cluster
+reg <- makeRegistry(id="GSE7390",seed=10284)
+ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_7390))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg) # This will wait until all jobs return with results and
+		     # provides a progress bar
+
+y <- loadResults(reg) # Aggregate results
+
+make_table(y)
 
 # Here, we'll do the permuted example to show no gain when Y and W are uncorrelated.
 
 # This will kick off 100 jobs on your cluster.
 reg <- makeRegistry(id="full_permute",seed=10284)
 ids <- batchMap(reg, par_fun, 31389:31488, more.args=list(rand=T))
-done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
-
-waitForJobs(reg)
-
-y <- loadResults(reg)
-
-make_table(y)
-
-# We extend the permuted example concept to examine what happens when we double the sample size
-
-reg <- makeRegistry(id="full_permute_double",seed=10284)
-ids <- batchMap(reg, par_fun_double, 31389:31488, more.args=list(rand=T))
-done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
-
-waitForJobs(reg)
-
-y <- loadResults(reg)
-
-make_table(y)
-
-# We extend the permuted example concept to examine what happens when we use fewer covariates
-
-reg <- makeRegistry(id="full_permute_fewer",seed=10284)
-ids <- batchMap(reg, par_fun_fewer, 31389:31488, more.args=list(rand=T))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
 waitForJobs(reg)
