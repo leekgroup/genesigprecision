@@ -3,8 +3,8 @@
 #'
 #' This function constructs a simulated dataset from the data saves in genesigprecision_data.Rda
 #' and computes the adjusted and unadjusted treatment effect estimates. This process is repeated
-#' 100 times. This function is called by BatchJobs 100 times to complete and aggregate results
-#' of 10,000 simulations of the described form. We split data into training and test sets and
+#' 1000 times. This function is called by BatchJobs 100 times to complete and aggregate results
+#' of 100,000 simulations of the described form. We split data into training and test sets and
 #' resample from the test data. We get approximations of precision gain from the resampled test data
 #' using covariates that are predictions from the models built on the training data.
 #'
@@ -15,7 +15,7 @@
 #'
 #' @export
 #'
-#' @return A 100 x 15 matrix with results for W_{-age}, W_C, W_G, W_C;W_G, W_CG (described in paper) over 100 simulations
+#' @return A 1000 x 15 matrix with results for W_{-age}, W_C, W_G, W_C;W_G, W_CG (described in paper) over 100 simulations
 
 par_fun_eset <- function(seed,pd,rand=F){
 
@@ -30,13 +30,11 @@ par_fun_eset <- function(seed,pd,rand=F){
 
 	options(warn=-1)
 	source("functions.R")
-#	load("genesigprecision_data.Rda")
-	
 
-	result <- matrix(NA,100,12)
+	result <- matrix(NA,1000,12)
         i <- 1
 
-        while(i <= 100){
+        while(i <= 1000){
 
                 pdtmp <- sampfun(pd) # We sample the data as per the scheme selected
 

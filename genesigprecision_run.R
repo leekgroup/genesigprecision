@@ -26,8 +26,8 @@ source("par_fun_eset.R")
 source("make_table.R")
 
 # This block will kick off 100 jobs on your cluster
-reg <- makeRegistry(id="full",seed=10284)
-ids <- batchMap(reg, par_fun, 10289:10388)
+reg <- makeRegistry(id="full",seed=10284) # Only the seed set here matters, as it governs the entire set of jobs
+ids <- batchMap(reg, par_fun, 10289:10388) # These values are placeholdesrs only. The same values will be used for all runs - they have no effect.
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
 waitForJobs(reg) # This will wait until all jobs return with results and
@@ -55,7 +55,7 @@ prep_eset_sim <- function(dat){
 dat_19615 <- prep_eset_sim(GSE19615)
 
 # This block will kick off 100 jobs on your cluster
-reg <- makeRegistry(id="GSE19615",seed=10284)
+reg <- makeRegistry(id="GSE19615",seed=11308)
 ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_19615))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
@@ -70,7 +70,7 @@ make_table(y)
 dat_11121 <- prep_eset_sim(GSE11121)
 
 # This block will kick off 100 jobs on your cluster
-reg <- makeRegistry(id="GSE11121",seed=10284)
+reg <- makeRegistry(id="GSE11121",seed=29849)
 ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_11121))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
@@ -83,10 +83,11 @@ make_table(y)
 
 # Dataset GSE7390
 dat_7390 <- prep_eset_sim(GSE7390)
-dat_7390 <- dat_7390[,-which(is.na(pData(dat_7390)$grade))]
+# We need to drop two observations where tumor grade is missing
+dat_7390 <- dat_7390[-which(is.na(dat_7390$grade)),]
 
 # This block will kick off 100 jobs on your cluster
-reg <- makeRegistry(id="GSE7390",seed=10284)
+reg <- makeRegistry(id="GSE7390",seed=36204)
 ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_7390))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
@@ -100,7 +101,7 @@ make_table(y)
 # Here, we'll do the permuted example to show no gain when Y and W are uncorrelated.
 
 # This will kick off 100 jobs on your cluster.
-reg <- makeRegistry(id="full_permute",seed=10284)
+reg <- makeRegistry(id="full_permute",seed=40184)
 ids <- batchMap(reg, par_fun, 31389:31488, more.args=list(rand=T))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 

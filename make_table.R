@@ -1,5 +1,3 @@
-# This is a convenience function to take a set of simulation results from
-# a BatchJobs run and output them as a table with bias, variance, and percent gain
 
 make_table <- function(y){
 	outmat <- do.call(rbind, y)
@@ -15,6 +13,9 @@ make_table <- function(y){
 	vars <- matrix(vars, 4, 3, byrow=T)
 
 	final <- cbind(means[,1], vars[,1], means[,2], vars[,2], means[,3], vars[,3], rot, col)
-
-	xtable(final, digits=5)
+	final[,"rot"] <- final[,"rot"] * 100
+	final[,"col"] <- final[,"col"] * 100
+	rownames(final) <- c("$W_{-ER}$", "$W_C$", "$W_G$", "$W_{CG}$")
+	xt <- xtable(final, digits=c(0,4,5,4,5,4,5,2,2))
+	print(xt, sanitize.rownames.function = identity)
 }

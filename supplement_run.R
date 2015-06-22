@@ -16,8 +16,8 @@ source("make_table.R")
 
 # We extend the permuted example concept to examine what happens when we double the sample size
 
-reg <- makeRegistry(id="full_permute_double",seed=10284)
-ids <- batchMap(reg, par_fun_double, 31389:31488, more.args=list(rand=T))
+reg <- makeRegistry(id="full_permute_double",seed=85037) # This sets the seed for the entire job set
+ids <- batchMap(reg, par_fun_double, 31389:31488, more.args=list(rand=T)) # The values here are placeholders only
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
 waitForJobs(reg)
@@ -28,7 +28,7 @@ make_table(y)
 
 # We extend the permuted example concept to examine what happens when we use fewer covariates
 
-reg <- makeRegistry(id="full_permute_fewer",seed=10284)
+reg <- makeRegistry(id="full_permute_fewer",seed=75030)
 ids <- batchMap(reg, par_fun_fewer, 31389:31488, more.args=list(rand=T))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
