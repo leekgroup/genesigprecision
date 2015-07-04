@@ -11,8 +11,66 @@ library(genefu)
 source("par_fun.R")
 source("par_fun_internal.R")
 source("par_fun_double.R")
+source("par_fun_eset_double.R")
 source("par_fun_fewer.R")
+source("prep_eset_sim.R")
 source("make_table.R")
+
+# We recreate Table 2 in the main text, but double the sample size for each study
+
+# MammaPrint validation data - doubled sample size
+reg <- makeRegistry(id="full_double",seed=53845) # This sets the seed for the entire job set
+ids <- batchMap(reg, par_fun_double, 31389:31488) # The values here are placeholders only
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg)
+
+y <- loadResults(reg)
+
+make_table(y)
+
+# Dataset GSE19615 - doubled sample size
+dat_19615 <- prep_eset_sim(GSE19615)
+
+reg <- makeRegistry(id="GSE19615_double",seed=25870)
+ids <- batchMap(reg, par_fun_eset_double, 10289:10388, more.args=list(pd=dat_19615))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg)
+
+y <- loadResults(reg)
+
+make_table(y)
+
+# Dataset GSE11121 - doubled sample size
+dat_11121 <- prep_eset_sim(GSE11121)
+
+reg <- makeRegistry(id="GSE11121_double",seed=92163)
+ids <- batchMap(reg, par_fun_eset_double, 10289:10388, more.args=list(pd=dat_11121))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg)
+
+y <- loadResults(reg)
+
+make_table(y)
+
+# Dataset GSE7390 - doubled sample size
+dat_7390 <- prep_eset_sim(GSE7390)
+# We need to drop two observations where tumor grade is missing
+dat_7390 <- dat_7390[-which(is.na(dat_7390$grade)),]
+
+reg <- makeRegistry(id="GSE7390_double",seed=50382)
+ids <- batchMap(reg, par_fun_eset_double, 10289:10388, more.args=list(pd=dat_7390))
+done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
+
+waitForJobs(reg)
+
+y <- loadResults(reg)
+
+make_table(y)
+
+
 
 # We extend the permuted example concept to examine what happens when we double the sample size
 

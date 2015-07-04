@@ -8,6 +8,8 @@
 #' resample from the test data. We get approximations of precision gain from the resampled test data
 #' using covariates that are predictions from the models built on the training data.
 #'
+#; This function operates on an expression set
+#'
 #' @param seed An integer random seed
 #' @param rand (logical) T indicates that you would like to permute all labels and remove corellation in the dataset. F indicates that you would like to permute records only and retain relationships between covariates
 #'
@@ -15,19 +17,21 @@
 #'
 #' @return A 100 x 15 matrix with results for W_{-age}, W_C, W_G, W_C;W_G, W_CG (described in paper) over 100 simulations
 
-par_fun_double <- function(seed,rand=F){
+par_fun_eset_double <- function(seed,pd,rand=F){
+
+	#set.seed(seed)
 
 	# If rand==F, we are doing a normal resampling. If rand==T, we are perumuting labels	
 	if(!rand){
-		sampfun <- function(pd){ pd[sample(nrow(pd), size=2*nrow(pd),replace=TRUE),]}
+		sampfun <- function(pd){ pd[sample(nrow(pd), size=2*nrow(pd), replace=TRUE),]}
 	} else {
-		# Here, we're doubling the size of our resampled dataset 
-        	sampfun <- function(pd){ytmp <- sample(pd$y, size=2*length(pd$y), replace=TRUE); pd <- pd[sample(nrow(pd), size=2*nrow(pd), replace=TRUE),]; pd$y <- ytmp; pd}
-	}
+		sampfun <- function(pd){ytmp <- sample(pd$y, replace=TRUE); pd <- pd[sample(nrow(pd), replace=TRUE),]; pd$y <- ytmp; pd}
+        }
 
 	options(warn=-1)
 	source("functions.R")
-	load("genesigprecision_data.Rda")
+#	load("genesigprecision_data.Rda")
+	
 
 	result <- matrix(NA,1000,12)
         i <- 1
@@ -38,10 +42,10 @@ par_fun_double <- function(seed,rand=F){
 
                 pdtmp$trt <- rbinom(nrow(pdtmp), 1, 0.5) # Exogenous treatment assignment
 
-                out_clin_no_er <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "g2ind", "g3ind")), error=function(e) e)
-                out_clin_er <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "Factor.Value.ER.status", "g2ind", "g3ind")), error=function(e) e)
-                out_gen <- tryCatch(run_analysis(pdtmp, c("Factor.Value.MammaPrint.prediction")), error=function(e) e)
-                out_cg <- tryCatch(run_analysis(pdtmp, c("Characteristics.Age", "Characteristics.TumorSize", "Factor.Value.ER.status", "g2ind", "g3ind", "Factor.Value.MammaPrint.prediction")), error=function(e) e)
+                out_clin_no_er <- tryCatch(run_analysis(pdtmp, c("age", "size", "g2ind", "g3ind")), error=function(e) e)
+                out_clin_er <- tryCatch(run_analysis(pdtmp, c("age", "size", "er", "g2ind", "g3ind")), error=function(e) e)
+                out_gen <- tryCatch(run_analysis(pdtmp, c("mammaprint")), error=function(e) e)
+                out_cg <- tryCatch(run_analysis(pdtmp, c("age", "size", "er", "g2ind", "g3ind", "mammaprint")), error=function(e) e)
 
                 if(any(unlist(lapply(list(out_clin_no_er, out_clin_er, out_gen, out_cg), inherits, "error")))){
 

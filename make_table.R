@@ -1,3 +1,7 @@
+# This is a convenience function that takes in the results from a BatchJobs run and
+# puts them into the format for the table entries in the manuscript. It calculates means
+# and variances over the iterations of the simulation at hand and also adds columns for
+# percentage gain due to the use of both adjusted estimators.
 
 make_table <- function(y){
 	outmat <- do.call(rbind, y)
