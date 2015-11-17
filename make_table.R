@@ -22,4 +22,11 @@ make_table <- function(y){
 	rownames(final) <- c("$W_{-ER}$", "$W_C$", "$W_G$", "$W_{CG}$")
 	xt <- xtable(final, digits=c(0,4,5,4,5,4,5,2,2))
 	print(xt, sanitize.rownames.function = identity)
+	
+	# Display differences between adjusted and unadjusted estimators (adjusted for all covariates, clinical + genomic)
+	diff <- outmat[,10] - outmat[,12]
+	hist(diff, main="Estimator difference", xlab="Unadjusted - Adjusted", freq=FALSE)
+	x <- matrix(c(mean(diff), sd(diff), sum(abs(outmat[,10]) > abs(outmat[,12]))/nrow(outmat)),1,3)
+	colnames(x) <- c("Meandiff", "sddiff", "% |una| > |adj|")
+	print(x)
 }
