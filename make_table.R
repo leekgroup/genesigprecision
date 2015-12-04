@@ -25,7 +25,7 @@ make_table <- function(y){
 	
 	# Display differences between adjusted and unadjusted estimators (adjusted for all covariates, clinical + genomic)
 	diff <- outmat[,10] - outmat[,12]
-	hist(diff, main="Estimator difference", xlab="Unadjusted - Adjusted", freq=FALSE)
+	hist(diff, main="Difference between unadjusted and adjusted estimators", xlab="Unadjusted - Adjusted", freq=FALSE)
 	x <- matrix(c(mean(diff), sd(diff), sum(abs(outmat[,10]) > abs(outmat[,12]))/nrow(outmat)),1,3)
 	colnames(x) <- c("Meandiff", "sddiff", "% |una| > |adj|")
 	print(x)

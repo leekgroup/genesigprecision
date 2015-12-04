@@ -30,5 +30,13 @@ and submit SGE batch jobs via the BatchJobs R package.
 1. Install the required packages.
 2. Download all files in this github repository and keep them together in a local directory on your cluster.
 3. Run the code from genesigprecision_run.R.
+	* We ask that you run this file line-by-line and do not source it directly.
 	* Please keep an eye for "submitJobs" commands in this file - these submit the batch jobs and are at the mercy of the cluster.
-4. (Optional) Run the code from supplement_run.R if you would like to recreate the results in the supplement as well.	
+	* The "waitForJobs" function which is used to monitor the progress of a simulation may error out due to database timeout (see this link[https://github.com/tudo-r/BatchJobs/issues/58] for further discussion)
+	  To avoid this, please wait a couple minutes before running the command to allow the jobs to start up on your cluster. If an error does occurr,
+	  the jobs will still run on the cluster and results will still be returned correctly. If the command does error, you may (1) re-run the command and wait
+	  for the database to unlock for monitoring, or (2) periodically check job progress directly on the cluster by using "system('qstat | wc -l')"
+	  to count how many jobs are currently running. If the error persits, you can restart R and load all the packages/data again - the jobs will still
+	  run and be aggregated by BatchJobs, and you can load the result when they are finished by going into the job directory (e.g., full-results/ for
+	  MammaPrint) and loading "registry.RData" before running the next functions, such as "y <- loadResults(reg)".
+4. (Optional) Run the code from supplement_run.R if you would like to recreate the results in the supplement as well. The same caveats about running cluster jobs apply.

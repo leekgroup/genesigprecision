@@ -24,6 +24,7 @@ load("genesigprecision_data.Rda")
 source("par_fun.R")
 source("par_fun_eset.R")
 source("make_table.R")
+source("prep_eset_sim.R")
 
 # This block will kick off 100 jobs on your cluster
 reg <- makeRegistry(id="full",seed=10284) # Only the seed set here matters, as it governs the entire set of jobs
@@ -35,7 +36,7 @@ waitForJobs(reg) # This will wait until all jobs return with results and
 
 y <- loadResults(reg) # Aggregate results
 
-make_table(y)
+make_table(y) # Produces table of average bias/variance/gain results, histogram of differences in bias, and average bias/SE information
 
 # Dataset GSE19615
 dat_19615 <- prep_eset_sim(GSE19615)
@@ -45,6 +46,10 @@ reg <- makeRegistry(id="GSE19615",seed=11308)
 ids <- batchMap(reg, par_fun_eset, 10289:10388, more.args=list(pd=dat_19615))
 done <- submitJobs(reg, wait=function(retries) 100, max.retries=10)
 
+# WARNING: Please wait a couple minutes before running the "waitForJobs" monitoring command
+# to avoid database lockout. If an error occurs, refer to the README for options
+# and note that the job is still running and will finish properly, but you may need to 
+# access the results from a fresh R session.
 waitForJobs(reg) # This will wait until all jobs return with results and
 		     # provides a progress bar
 
