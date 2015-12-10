@@ -40,3 +40,4 @@ and submit SGE batch jobs via the BatchJobs R package.
 	  run and be aggregated by BatchJobs, and you can load the result when they are finished by going into the job directory (e.g., full-results/ for
 	  MammaPrint) and loading "registry.RData" before running the next functions, such as "y <- loadResults(reg)".
 4. (Optional) Run the code from supplement_run.R if you would like to recreate the results in the supplement as well. The same caveats about running cluster jobs apply.
+   The code for the doubled sample size runs is in this file.
